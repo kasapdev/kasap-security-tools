@@ -10,6 +10,7 @@ const BASE: NormalizedCors = {
   headersWildcard: false,
   varyIncludesOrigin: undefined,
   originIsDynamic: false,
+  allowsNullOrigin: false,
 };
 
 describe("runCorsRules", () => {
@@ -59,6 +60,20 @@ describe("runCorsRules", () => {
     });
     expect(findings).toContainEqual(
       expect.objectContaining({ ruleId: "reflected-origin-without-validation", severity: "critical" }),
+    );
+  });
+
+  it("flags null-origin-allowed as high when there are no credentials", () => {
+    const findings = runCorsRules({ ...BASE, allowsNullOrigin: true });
+    expect(findings).toContainEqual(
+      expect.objectContaining({ ruleId: "null-origin-allowed", severity: "high" }),
+    );
+  });
+
+  it("escalates null-origin-allowed to critical when credentials are allowed", () => {
+    const findings = runCorsRules({ ...BASE, allowsNullOrigin: true, credentials: true });
+    expect(findings).toContainEqual(
+      expect.objectContaining({ ruleId: "null-origin-allowed", severity: "critical" }),
     );
   });
 

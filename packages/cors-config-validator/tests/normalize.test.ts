@@ -50,6 +50,17 @@ describe("normalizeFromHeaders", () => {
     expect(normalizeFromHeaders({ vary: "Accept-Encoding" }).varyIncludesOrigin).toBe(false);
     expect(normalizeFromHeaders({}).varyIncludesOrigin).toBeUndefined();
   });
+
+  it('detects a literal "null" ACAO as allowsNullOrigin', () => {
+    expect(normalizeFromHeaders({ accessControlAllowOrigin: "null" }).allowsNullOrigin).toBe(true);
+    expect(normalizeFromHeaders({ accessControlAllowOrigin: "https://trusted.example" }).allowsNullOrigin).toBe(
+      false,
+    );
+  });
+
+  it("does not confuse a wildcard ACAO with the null-origin case", () => {
+    expect(normalizeFromHeaders({ accessControlAllowOrigin: "*" }).allowsNullOrigin).toBe(false);
+  });
 });
 
 describe("normalizeFromConfig", () => {
@@ -93,5 +104,24 @@ describe("normalizeFromConfig", () => {
 
   it("always leaves varyIncludesOrigin unknown (undefined) — config mode has no real response", () => {
     expect(normalizeFromConfig({ origin: true }).varyIncludesOrigin).toBeUndefined();
+  });
+
+  it('flags allowsNullOrigin when the allowlist array includes "null"', () => {
+    const n = normalizeFromConfig({ origin: ["https://app.example.com", "null"] });
+    expect(n.allowsNullOrigin).toBe(true);
+    // Allowlisting "null" alongside a real origin is still a fixed array,
+    // not naive reflection — it should not also trip reflectsArbitraryOrigin.
+    expect(n.reflectsArbitraryOrigin).toBe(false);
+  });
+
+  it('flags allowsNullOrigin when origin is the static string "null"', () => {
+    expect(normalizeFromConfig({ origin: "null" }).allowsNullOrigin).toBe(true);
+  });
+
+  it("does not flag allowsNullOrigin for a normal allowlist or static origin", () => {
+    expect(normalizeFromConfig({ origin: ["https://a.example", "https://b.example"] }).allowsNullOrigin).toBe(
+      false,
+    );
+    expect(normalizeFromConfig({ origin: "https://app.example.com" }).allowsNullOrigin).toBe(false);
   });
 });

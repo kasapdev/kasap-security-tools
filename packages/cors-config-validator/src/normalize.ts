@@ -28,6 +28,7 @@ export function normalizeFromHeaders(headers: CorsHeaders, requestOrigin?: strin
   const methodsWildcard = includesWildcard(headers.accessControlAllowMethods);
   const headersWildcard = includesWildcard(headers.accessControlAllowHeaders);
   const originIsDynamic = wildcardOrigin || reflectsArbitraryOrigin;
+  const allowsNullOrigin = acao === "null";
 
   const varyIncludesOrigin =
     headers.vary === undefined
@@ -44,6 +45,7 @@ export function normalizeFromHeaders(headers: CorsHeaders, requestOrigin?: strin
     headersWildcard,
     varyIncludesOrigin,
     originIsDynamic,
+    allowsNullOrigin,
   };
 }
 
@@ -66,6 +68,11 @@ export function normalizeFromConfig(config: CorsConfigLike): NormalizedCors {
     Array.isArray(origin) ||
     typeof origin === "function" ||
     origin instanceof RegExp;
+  // A static `origin: "null"` or an allowlist array that includes the
+  // literal string "null" both accept the `Origin: null` header that
+  // sandboxed iframes, `data:`/`file:` pages, and redirected requests can
+  // send — see the `allowsNullOrigin` doc comment on `NormalizedCors`.
+  const allowsNullOrigin = origin === "null" || (Array.isArray(origin) && origin.includes("null"));
 
   return {
     wildcardOrigin,
@@ -79,5 +86,6 @@ export function normalizeFromConfig(config: CorsConfigLike): NormalizedCors {
     // only fires on a definite `false`) is simply not evaluated in this mode.
     varyIncludesOrigin: undefined,
     originIsDynamic,
+    allowsNullOrigin,
   };
 }

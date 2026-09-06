@@ -73,6 +73,12 @@ describe("liveCheck", () => {
     expect(findings.map((f) => f.ruleId)).toContain("missing-vary-origin");
   });
 
+  it('flags null-origin-allowed when ACAO is the literal string "null"', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ "access-control-allow-origin": "null" }));
+    const findings = await liveCheck("https://api.example.com", { fetchImpl });
+    expect(findings.map((f) => f.ruleId)).toContain("null-origin-allowed");
+  });
+
   it("respects assumePublicApi to suppress the informational wildcard-origin finding", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ "access-control-allow-origin": "*" }));
     const findings = await liveCheck("https://api.example.com", { fetchImpl, assumePublicApi: true });
