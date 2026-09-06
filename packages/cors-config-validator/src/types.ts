@@ -44,4 +44,14 @@ export interface NormalizedCors {
   /** `undefined` when it cannot be known (config-file mode has no real response to inspect). */
   varyIncludesOrigin?: boolean;
   originIsDynamic: boolean;
+  /**
+   * True when the literal string `"null"` is allowed as an origin — either a
+   * static `Access-Control-Allow-Origin: null` response, or a config
+   * allowlist that includes `"null"`. Browsers send `Origin: null` from
+   * contexts an attacker can trivially trigger (sandboxed `<iframe>`
+   * documents, `data:`/`file:` pages, redirected requests), so this is
+   * effectively an attacker-reachable wildcard, not a safe static allowlist
+   * entry.
+   */
+  allowsNullOrigin: boolean;
 }

@@ -38,6 +38,20 @@ export function runCorsRules(normalized: NormalizedCors, options: RuleOptions = 
     });
   }
 
+  if (normalized.allowsNullOrigin) {
+    findings.push({
+      ruleId: "null-origin-allowed",
+      severity: normalized.credentials ? "critical" : "high",
+      message:
+        'The origin allowlist accepts the literal string "null". Browsers send `Origin: null` from ' +
+        "contexts an attacker can trivially trigger — sandboxed `<iframe>` documents, `data:`/`file:` " +
+        "pages, and some redirected requests — so allowlisting it is effectively equivalent to allowing " +
+        "an attacker-controlled origin" +
+        (normalized.credentials ? ", combined here with credentialed requests." : ".") +
+        ' Remove "null" from the allowlist unless you have a specific, well-understood reason to trust it.',
+    });
+  }
+
   if (normalized.reflectsArbitraryOrigin && !normalized.wildcardOrigin) {
     findings.push({
       ruleId: "reflected-origin-without-validation",
