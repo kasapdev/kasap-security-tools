@@ -30,4 +30,10 @@ describe("redact", () => {
     const secret = "0123456789"; // 10 chars: keep "012" and "789", redact 4 middle chars
     expect(redact(secret)).toBe("012****789");
   });
+
+  it("returns an empty string for an empty secret instead of fabricating asterisks", () => {
+    // With no characters at all, there is nothing to redact — returning
+    // "***" here would misleadingly imply a secret was actually found.
+    expect(redact("")).toBe("");
+  });
 });
