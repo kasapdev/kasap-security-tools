@@ -86,7 +86,14 @@ export function runCorsRules(normalized: NormalizedCors, options: RuleOptions = 
     });
   }
 
-  if (normalized.originIsDynamic && normalized.varyIncludesOrigin === false) {
+  // Deliberately checked against `reflectsArbitraryOrigin`, not the broader
+  // `originIsDynamic` (which also covers a plain wildcard). A response that
+  // unconditionally sends `Access-Control-Allow-Origin: *` doesn't actually
+  // vary by request Origin at all — it's the same header for every caller —
+  // so there's no caching hazard and nothing for `Vary: Origin` to protect.
+  // Only genuine reflection (the ACAO value itself depends on the request's
+  // Origin) creates the shared-cache leak this rule is about.
+  if (normalized.reflectsArbitraryOrigin && normalized.varyIncludesOrigin === false) {
     findings.push({
       ruleId: "missing-vary-origin",
       severity: "medium",

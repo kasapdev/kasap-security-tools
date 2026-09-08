@@ -128,4 +128,24 @@ describe("runCorsRules", () => {
     const findings = runCorsRules({ ...BASE, originIsDynamic: false, varyIncludesOrigin: false });
     expect(findings.find((f) => f.ruleId === "missing-vary-origin")).toBeUndefined();
   });
+
+  // Regression test for a real false positive: a plain wildcard-origin
+  // response (`Access-Control-Allow-Origin: *`, not reflection) sends the
+  // exact same ACAO value for every caller, so it can't leak cross-origin
+  // via a shared cache the way genuine reflection can — there's nothing for
+  // `Vary: Origin` to protect against. `originIsDynamic` is true for both
+  // wildcardOrigin and reflectsArbitraryOrigin, so a prior version of this
+  // rule (gated on `originIsDynamic`) incorrectly flagged missing-vary-origin
+  // for a bare wildcard response too. It must only fire for genuine
+  // reflection.
+  it("does not flag missing-vary-origin for a plain wildcard origin (not reflection) — same ACAO for every caller", () => {
+    const findings = runCorsRules({
+      ...BASE,
+      wildcardOrigin: true,
+      reflectsArbitraryOrigin: false,
+      originIsDynamic: true,
+      varyIncludesOrigin: false,
+    });
+    expect(findings.find((f) => f.ruleId === "missing-vary-origin")).toBeUndefined();
+  });
 });

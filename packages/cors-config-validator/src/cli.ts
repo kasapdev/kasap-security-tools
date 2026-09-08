@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { liveCheck } from "./liveCheck.js";
 import { normalizeFromConfig } from "./normalize.js";
 import { runCorsRules } from "./rules.js";
+import { simulatePreflight } from "./simulate.js";
 import type { CorsConfigLike, CorsFinding, Severity } from "./types.js";
 
 const SEVERITY_ORDER: Record<Severity, number> = { low: 0, medium: 1, high: 2, critical: 3 };
@@ -75,6 +76,49 @@ program
     ) => {
       const findings = await liveCheck(url, { assumePublicApi: opts.assumePublicApi });
       report(findings, opts);
+    },
+  );
+
+program
+  .command("simulate <file>")
+  .description(
+    "Simulate a single cross-origin request against a JSON CORS config file and report exactly what the " +
+      "policy would allow or deny, per the real Fetch/CORS spec rules. Makes no network call.",
+  )
+  .requiredOption("--origin <origin>", "the request Origin to simulate, e.g. https://partner.example")
+  .requiredOption("--method <method>", "the request method to simulate, e.g. PUT")
+  .option(
+    "--headers <headers>",
+    "comma-separated list of non-simple request headers to simulate, e.g. Authorization,X-Api-Key",
+  )
+  .option("--json", "output the result as JSON instead of a human-readable summary")
+  .action(
+    (file: string, opts: { origin: string; method: string; headers?: string; json?: boolean }) => {
+      const raw = readFileSync(file, "utf8");
+      const config = JSON.parse(raw) as CorsConfigLike;
+      const requestHeaders = opts.headers
+        ? opts.headers
+            .split(",")
+            .map((h) => h.trim())
+            .filter(Boolean)
+        : undefined;
+      const result = simulatePreflight(config, { origin: opts.origin, method: opts.method, requestHeaders });
+
+      if (opts.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log(result.allowed ? "ALLOWED" : "DENIED");
+      console.log(`  origin:  ${result.origin.allowed ? "ok" : "DENIED"} — ${result.origin.reason}`);
+      console.log(`  method:  ${result.method.allowed ? "ok" : "DENIED"} — ${result.method.reason}`);
+      console.log(`  headers: ${result.headers.allowed ? "ok" : "DENIED"} — ${result.headers.reason}`);
+      if (result.blockedByCredentialsWildcard) {
+        console.log("  credentials: BLOCKED — a wildcard cannot satisfy a credentialed request per spec.");
+      }
+      if (!result.allowed) {
+        process.exitCode = 1;
+      }
     },
   );
 
